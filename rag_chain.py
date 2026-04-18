@@ -1,12 +1,14 @@
-"""
-rag_chain.py — Core RAG retrieval + answer generation (LangChain 1.x LCEL style).
-Uses FREE local HuggingFace embeddings + OpenAI GPT-4o-mini for chat only.
-"""
+import os
+os.environ["CHROMA_TELEMETRY_GATHER"] = "False"
 
+from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate
@@ -17,6 +19,7 @@ from langchain_core.documents import Document
 from config import (
     CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL,
     LLM_MODEL, LLM_TEMPERATURE, LLM_MAX_TOKENS,
+    MODEL_PROVIDER, BEDROCK_MODEL, BEDROCK_REGION,
     TOP_K, SYSTEM_PROMPT
 )
 
@@ -24,7 +27,10 @@ from config import (
 def _get_embeddings():
     return HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,
-        model_kwargs={"device": "cpu"},
+        model_kwargs={
+            "device": "cpu",
+            "trust_remote_code": True
+        },
         encode_kwargs={"normalize_embeddings": True},
     )
 
@@ -104,11 +110,28 @@ def build_rag_chain(vectorstore: Chroma):
         ("human", "{question}"),
     ])
 
-    llm = ChatOpenAI(
-        model=LLM_MODEL,
-        temperature=LLM_TEMPERATURE,
-        max_tokens=LLM_MAX_TOKENS,
-    )
+    if MODEL_PROVIDER == "openai":
+        llm = ChatOpenAI(
+            model=LLM_MODEL,
+            temperature=LLM_TEMPERATURE,
+            max_tokens=LLM_MAX_TOKENS,
+        )
+    elif MODEL_PROVIDER == "bedrock":
+        try:
+            from langchain_aws import ChatBedrockConverse
+            llm = ChatBedrockConverse(
+                model=BEDROCK_MODEL,
+                region_name=BEDROCK_REGION,
+                temperature=LLM_TEMPERATURE,
+                max_tokens=LLM_MAX_TOKENS,
+            )
+        except ImportError:
+            raise ImportError(
+                "Please install 'langchain-aws' and 'boto3' to use Bedrock: "
+                "pip install langchain-aws boto3"
+            )
+    else:
+        raise ValueError(f"Unknown MODEL_PROVIDER: {MODEL_PROVIDER}")
 
     # Store retrieved docs in a side channel
     def retrieve_and_format(inputs):

@@ -21,10 +21,20 @@ CHUNK_OVERLAP = 200
 # ── Embeddings (FREE local model — no API key needed) ─────────────────────────
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
 
-# ── OpenAI Chat Model ─────────────────────────────────────────────────────────
+# ── LLM Configuration ─────────────────────────────────────────────────────────
+# Options: "openai", "bedrock"
+MODEL_PROVIDER  = "bedrock"
+
+# OpenAI settings
 LLM_MODEL       = "gpt-4o-mini"
 LLM_TEMPERATURE = 0.0
 LLM_MAX_TOKENS  = 1024
+
+# Amazon Bedrock settings
+# Suggested: anthropic.claude-3-haiku-20240307-v1:0 (fast/cheap)
+#            anthropic.claude-3-sonnet-20240229-v1:0 (powerful)
+BEDROCK_MODEL   = "anthropic.claude-3-haiku-20240307-v1:0"
+BEDROCK_REGION  = "us-east-1"
 
 # ── Retrieval ──────────────────────────────────────────────────────────────────
 TOP_K = 5

@@ -10,6 +10,9 @@ Usage:
 import argparse
 import sys
 import time
+import os
+os.environ["CHROMA_TELEMETRY_GATHER"] = "False"
+
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -17,7 +20,10 @@ load_dotenv()
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
 from config import (
@@ -31,7 +37,10 @@ def get_embeddings():
     print(f"   Loading local embedding model '{EMBEDDING_MODEL}'...", end="", flush=True)
     emb = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,
-        model_kwargs={"device": "cpu"},
+        model_kwargs={
+            "device": "cpu",
+            "trust_remote_code": True
+        },
         encode_kwargs={"normalize_embeddings": True},
     )
     print(" [OK]")
@@ -81,7 +90,11 @@ def build_vectorstore(chunks: list, reset: bool = False) -> Chroma:
     if reset:
         try:
             import chromadb
-            client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+            import chromadb.config
+            client = chromadb.PersistentClient(
+                path=str(CHROMA_DIR),
+                settings=chromadb.config.Settings(anonymized_telemetry=False)
+            )
             # Delete and recreate the collection to clear it
             try:
                 client.delete_collection(CHROMA_COLLECTION)

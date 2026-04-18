@@ -13,7 +13,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from config import POLICIES_DIR, CHROMA_DIR
+from config import (
+    POLICIES_DIR, CHROMA_DIR,
+    MODEL_PROVIDER, LLM_MODEL, BEDROCK_MODEL
+)
 from rag_chain import get_vectorstore, get_collection_stats, build_rag_chain, format_sources
 
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -128,6 +131,8 @@ def init_session():
         "vectorstore": None,
         "stats":       {"chunks": 0, "files": []},
         "db_loaded":   False,
+        "provider":    MODEL_PROVIDER,
+        "model_name":  BEDROCK_MODEL if MODEL_PROVIDER == "bedrock" else LLM_MODEL
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -142,6 +147,8 @@ def load_chain():
         st.session_state.chain       = build_rag_chain(vs)
         st.session_state.stats       = get_collection_stats()
         st.session_state.db_loaded   = True
+        st.session_state.provider    = MODEL_PROVIDER
+        st.session_state.model_name  = BEDROCK_MODEL if MODEL_PROVIDER == "bedrock" else LLM_MODEL
     else:
         st.session_state.db_loaded = False
 
@@ -223,7 +230,9 @@ def render_sidebar():
             st.rerun()
 
         st.markdown("---")
-        st.caption("🤖 **LLM**: gpt-4o-mini  \n📐 **Embeddings**: all-MiniLM-L6-v2 (free, local)  \n🗄️ **Vector DB**: ChromaDB")
+        provider_name = "Amazon Bedrock" if st.session_state.get("provider") == "bedrock" else "OpenAI"
+        model_name = st.session_state.get("model_name", "Unknown")
+        st.caption(f"🤖 **Provider**: {provider_name}  \n⚙️ **LLM**: {model_name}  \n📐 **Embeddings**: all-MiniLM-L6-v2 (free, local)  \n🗄️ **Vector DB**: ChromaDB")
 
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
